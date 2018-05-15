@@ -1,0 +1,71 @@
+- name: Install python2 (required for ansible)
+  raw: python -V || apt-get -y install python-simplejson
+
+- name: Install mono repo
+  apt_repository:
+    repo: deb https://download.mono-project.com/repo/ubuntu stable-xenial main
+    state: present
+    filename: mono
+
+- name: Install mono key
+  apt_key:
+    keyserver: keyserver.ubuntu.com
+    id: 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+  
+- name: Install package dependencies
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - nfs-common
+    - libmono-cil-dev
+    - curl
+    - mediainfo
+    - python-pip
+
+- name: Install pip dependencies
+  pip:
+    name: github3.py
+
+- name: Get latest release
+  uri:
+    url: https://api.github.com/repos/Lidarr/Lidarr/releases
+    return_contents: yes
+  register: lidarr_release
+
+- name: Download and extract latest release
+  unarchive:
+    src: "https://github.com/Lidarr/Lidarr/releases/download/{{ lidarr_release['json'][0]['tag_name'] }}/Lidarr.develop.{{ lidarr_release['json'][0]['tag_name'][1:] }}.linux.tar.gz"
+    dest: /opt
+    remote_src: yes
+
+- name: Change permissions
+  file:
+    path: /opt/Lidarr
+    owner: root
+    group: root
+    recurse: yes
+    
+- name: Create systemd file
+  template:
+    src: systemd.j2
+    dest: /etc/systemd/system/lidarr.service
+
+- name: Create mountpoint
+  file:
+    path: /nfs
+    state: directory
+  
+- name: Mount NFS
+  mount:
+    path: /nfs
+    src: 192.168.1.32:/mnt/storage
+    fstype: nfs
+    state: mounted
+
+- name: Start service
+  service:
+    name: lidarr
+    state: started
+    enabled: yes
+

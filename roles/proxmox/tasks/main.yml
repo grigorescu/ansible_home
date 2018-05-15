@@ -1,0 +1,41 @@
+- name: Install proxmox prereqs
+  pip:
+    name: "{{ item }}"
+    extra_args: --user
+  with_items:
+    - proxmoxer
+    - requests
+          
+- name: Download template
+  delegate_to: proxmox
+  command: "/usr/bin/pveam download local {{ container_template }}"
+  args:
+    creates: "/var/lib/vz/template/cache/{{ container_template }}"
+
+- name: Create proxmox container
+  proxmox:
+    node: prox
+    api_host: "{{ hostvars['prox_dell']['ip'] }}"
+    api_user: proxmox_admin@pve
+    api_password: "{{ proxmox_api_password }}"
+    password: "{{ proxmox_root_password }}"
+    ostemplate: "local:vztmpl/{{ container_template }}"
+    hostname: "{{ container_name }}"
+    netif: "{\"net0\": \"name=eth0,ip={{ container_ip }}/24,gw=192.168.1.1,ip6=dhcp,bridge=vmbr0\"}"
+    onboot: yes
+    pubkey: "{{ pubkey }}"
+    storage: local-zfs
+    disk: "{{ container_disk | default('3') }}"
+
+- name: Start proxmox container
+  proxmox:
+    node: prox
+    api_host: "{{ hostvars['prox_dell']['ip'] }}"
+    api_user: proxmox_admin@pve
+    api_password: "{{ proxmox_api_password }}"
+    state: started
+    hostname: "{{ container_name }}"
+  retries: 10
+  delay: 2
+  ignore_errors: yes
+

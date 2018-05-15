@@ -1,0 +1,44 @@
+server {
+    listen       443 ssl;
+    server_name  {{ site_name }}.home.vladg.net;
+
+    location / {
+        proxy_pass http://{{ container_ip }}:{{ port }}/;
+        proxy_set_header Host $host;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+   {% if redirect is defined %}
+    location = / {
+    	return 301 {{ redirect }};
+    }
+    {% endif %}
+
+    ssl_certificate /etc/letsencrypt/live/home.vladg.net/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/home.vladg.net/privkey.pem; # managed by Certbot    
+}
+
+server {
+    if ($host ~ ^[^.]+\.home\.vladg\.net$) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+    
+    listen       80;
+    server_name  {{ site_name }}.home.vladg.net;
+
+    location / {
+        proxy_pass http://{{ container_ip }}:{{ port }}/;
+        proxy_set_header Host $host;
+
+        proxy_http_version 1.1;
+    }
+
+    {% if redirect is defined %}
+    location = / {
+    	return 301 {{ redirect }};
+    }
+    {% endif %}
+}

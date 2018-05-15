@@ -1,0 +1,21 @@
+---
+- set_fact:
+    container_ip: "{{ hostvars[role_name]['ip'] }}"
+    container_name: "{{ role_name }}"
+- name: Setup proxmox container
+  import_role:
+    name: proxmox
+  vars:
+    container_template: "{{ template }}"
+    pubkey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDVUgbnG6ntdf5XmD2qXfQCClOvgpk55js8LWHiXJHkYyDf6Wh70V3ii8689QwVVlADOk/smNnaodpNMroHzD2iiR760ARA4Upp+WdFtbgtChj2p4yjh0QhLVPsc0NPIMKwdgQfR5rZyKEdYztiYMMPw8pt1xsXHLWIsOEA7a3fP1T+tbmLju9Rqc0iaxE5RQl97ceXU3XKKESbL8XEunCKL6vFradGl2MuIAVzTjSCvUCED6j6gN1s+MPE2DLa2rdqUtR6ctU5wzLT0qn9yxyXhnMnxhY+Q/i7zRUIZxxOdV+jVvuwTb2M/Mhoyzy9X1k94QYCAxU04K/xGvxluNgV vladg@babbage"
+    
+- name: "Run commands on {{ role_name }} itself"
+  delegate_to: "{{ container_ip }}"
+  import_tasks: local.yml
+
+- name: Add nginx proxying
+  include_role:
+    name: nginx_proxy
+  vars:
+    port: 8686
+    site_name: "{{ container_name }}"
